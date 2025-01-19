@@ -1,11 +1,11 @@
 <div class="car-item card">
-    <a href="/view.html">
+{{--    <a href="{{ route('car.show', $car) }}">--}}
         <img
             src="/img/cars/Lexus-RX200t-2016/1.jpeg"
             alt=""
             class="car-item-img rounded-t"
         />
-    </a>
+{{--    </a>--}}
     <div class="p-medium">
         <div class="flex items-center justify-between">
             <small class="m-0 text-muted">New Jersey</small>
