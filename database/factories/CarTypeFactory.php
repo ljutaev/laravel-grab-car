@@ -2,13 +2,12 @@
 
 namespace Database\Factories;
 
-use App\Models\Maker;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Maker>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\CarType>
  */
-class MakerFactory extends Factory
+class CarTypeFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -18,7 +17,7 @@ class MakerFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->word()
+            'name' => fake()->randomElement(['Sedan', 'SUV', 'Truck', 'Van', 'Coupe', 'Crossover'])
         ];
     }
 }

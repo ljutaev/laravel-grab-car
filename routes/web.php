@@ -14,4 +14,6 @@ Route::get('login', [LoginController::class, 'create'])->name('login');
 
 // Ordering of these two lines must not be changed
 Route::get('/car/search', [CarController::class, 'search'])->name('car.search');
+Route::get('/car/watchlist', [CarController::class, 'watchlist'])->name('car.watchlist');
 Route::resource('car', CarController::class);
+
