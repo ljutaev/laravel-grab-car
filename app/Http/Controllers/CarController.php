@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use Dflydev\DotAccessData\Data;
 use Illuminate\Http\Request;
 use App\Models\Car;
 use Illuminate\View\View;
 use App\Models\User;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\File;
+
 
 class CarController extends Controller
 {
@@ -36,7 +40,54 @@ class CarController extends Controller
      */
     public function store(Request $request)
     {
+        // Get request data
+        $data = $request->validate([
+            'maker_id' => 'required',
+            'model_id' => 'required',
+            'year' => ['required', 'integer', 'min:1900', 'max:' . date('Y')],
+            'price' => 'required|integer|min:0',
+            'vin' => 'required|string|size:17',
+            'mileage' => 'required|integer|min:0',
+            'car_type_id' => 'required|exists:car_types,id',
+            'fuel_type_id' => 'required|exists:fuel_types,id',
+            'city_id' => 'required|exists:cities,id',
+            'address' => 'required|string',
+            'phone' => 'required|string|min:9',
+            'description' => 'nullable|string',
+            'published_at' => 'nullable|string',
+            'features' => 'array',
+            'features.*' => 'string',
+            'images' => 'array',
+            'images.*' => File::image()
+                ->max(2048)
+        ]);
 
+        dd($data);
+
+        // Get features data
+        $featuresData = $data['features'];
+
+        // Get images
+        $images = $request->file('images') ?: [];
+
+        // Set user ID
+        $data['user_id'] = 1;
+        // Create new car
+        $car = Car::create($data);
+
+        // Create features
+        $car->features()->create($featuresData);
+
+        // Iterate and create images
+        foreach ($images as $i => $image) {
+            // Save image on file system
+            $path = $image->store('public/images');
+            // Create record in the database
+            $car->images()->create(['image_path' => $path, 'position' => $i + 1]);
+        }
+
+        // Redirect to car.index route
+        return redirect()->route('car.index');
     }
 
     /**
@@ -44,6 +95,9 @@ class CarController extends Controller
      */
     public function show(Car $car)
     {
+        if( ! $car->published_at ) {
+            abort(404);
+        }
         return view('car.show', ['car' => $car]);
     }
 
@@ -52,16 +106,72 @@ class CarController extends Controller
      */
     public function edit(Car $car)
     {
+
+        dd($car->features);
         return view('car.edit', ['car' => $car]);
     }
 
-    public function search() : View
+    public function search(Request $request)
     {
-        $query = Car::where('published_at', '<', now())
-            ->with(['primaryImage', 'city', 'carType', 'fuelType', 'maker', 'model'])
-            ->orderBy('published_at', 'desc');
+        $maker = $request->integer('maker_id');
+        $model = $request->integer('model_id');
+        $carType = $request->integer('car_type_id');
+        $fuelType = $request->integer('fuel_type_id');
+        $state = $request->integer('state_id');
+        $city = $request->integer('city_id');
+        $yearFrom = $request->integer('year_from');
+        $yearTo = $request->integer('year_to');
+        $priceFrom = $request->integer('price_from');
+        $priceTo = $request->integer('price_to');
+        $mileage = $request->integer('mileage');
+        $sort = $request->input('sort', '-published_at');
 
-        $cars = $query->paginate(15);
+        $query = Car::where('published_at', '<', now())
+            ->with(['primaryImage', 'city', 'carType', 'fuelType', 'maker', 'model']);
+
+        if ($maker) {
+            $query->where('maker_id', $maker);
+        }
+        if ($model) {
+            $query->where('model_id', $model);
+        }
+        if ($state) {
+            $query->join('cities', 'cities.id', '=', 'cars.city_id')
+                ->where('cities.state_id', $state);
+        }
+        if ($city) {
+            $query->where('city_id', $city);
+        }
+        if ($carType) {
+            $query->where('car_type_id', $carType);
+        }
+        if ($fuelType) {
+            $query->where('fuel_type_id', $fuelType);
+        }
+        if ($yearFrom) {
+            $query->where('year', '>=', $yearFrom);
+        }
+        if ($yearTo) {
+            $query->where('year', '<=', $yearTo);
+        }
+        if ($priceFrom) {
+            $query->where('price', '>=', $priceFrom);
+        }
+        if ($priceTo) {
+            $query->where('price', '<=', $priceTo);
+        }
+        if ($mileage) {
+            $query->where('mileage', '<=', $mileage);
+        }
+
+        if (str_starts_with($sort, '-')) {
+            $sortBy = substr($sort, 1);
+            $query->orderBy($sortBy, 'desc');
+        } else {
+            $query->orderBy($sort);
+        }
+
+        $cars = $query->paginate(15)->withQueryString();
 
         return view('car.search', ['cars' => $cars]);
     }
